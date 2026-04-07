@@ -1,7 +1,9 @@
 const MODIFIER_ORDER = ['Command', 'Ctrl', 'Option', 'Shift'] as const
 type Modifier = (typeof MODIFIER_ORDER)[number]
+const FUNCTION_KEY_REGEX = /^F([1-9]|1[0-2])$/
+const FUNCTION_KEYS = Array.from({ length: 12 }, (_, index) => `F${index + 1}`)
 
-const DISPLAY_KEYS = [
+const DISPLAY_KEYS: readonly string[] = [
   'A',
   'B',
   'C',
@@ -38,18 +40,7 @@ const DISPLAY_KEYS = [
   '7',
   '8',
   '9',
-  'F1',
-  'F2',
-  'F3',
-  'F4',
-  'F5',
-  'F6',
-  'F7',
-  'F8',
-  'F9',
-  'F10',
-  'F11',
-  'F12',
+  ...FUNCTION_KEYS,
   'Enter',
   'Escape',
   'Tab',
@@ -64,6 +55,10 @@ const DISPLAY_KEYS = [
   'ArrowDown',
   'ArrowLeft',
   'ArrowRight',
+  'Command',
+  'Ctrl',
+  'Option',
+  'Shift',
 ] as const
 
 const MODIFIER_KEYS = new Set(['Meta', 'Control', 'Alt', 'Shift'])
@@ -142,7 +137,7 @@ function normalizePrimaryKey(raw: string) {
 
   const upper = trimmed.toUpperCase()
   if (/^[A-Z0-9]$/.test(upper)) return upper
-  if (/^F([1-9]|1[0-2])$/.test(upper)) return upper
+  if (FUNCTION_KEY_REGEX.test(upper)) return upper
 
   const normalizedMap: Record<string, string> = {
     esc: 'Escape',
@@ -167,12 +162,23 @@ function normalizePrimaryKey(raw: string) {
     down: 'ArrowDown',
     left: 'ArrowLeft',
     right: 'ArrowRight',
+    command: 'Command',
+    cmd: 'Command',
+    meta: 'Command',
+    ctrl: 'Ctrl',
+    control: 'Ctrl',
+    option: 'Option',
+    alt: 'Option',
+    shift: 'Shift',
   }
 
   return normalizedMap[trimmed.toLowerCase()] ?? trimmed
 }
 
 function keyFromKeyboardEvent(event: KeyboardEvent) {
+  if (event.key === 'Shift') {
+    return 'Shift'
+  }
   if (MODIFIER_KEYS.has(event.key)) {
     return ''
   }
@@ -183,8 +189,9 @@ function keyFromKeyboardEvent(event: KeyboardEvent) {
   if (event.code.startsWith('Digit')) {
     return event.code.slice(5)
   }
-  if (/^F([1-9]|1[0-2])$/.test(event.code)) {
-    return event.code
+  const normalizedCode = event.code.toUpperCase()
+  if (FUNCTION_KEY_REGEX.test(normalizedCode)) {
+    return normalizedCode
   }
 
   return normalizePrimaryKey(event.key)
