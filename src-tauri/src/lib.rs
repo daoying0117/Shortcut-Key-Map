@@ -10,6 +10,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 const DB_FILE_NAME: &str = "shortcut-key-map.sqlite3";
 const DEFAULT_TOGGLE_SHORTCUT: &str = "CmdOrCtrl+Shift+I";
+// Backward compatibility for databases created before the default shortcut changed.
 const LEGACY_DEFAULT_TOGGLE_SHORTCUT: &str = "CmdOrCtrl+Shift+K";
 const DEFAULT_WINDOW_POSITION_MODE: &str = "top_center";
 const FLOATING_MARGIN_X: i32 = 16;
@@ -676,7 +677,6 @@ fn toggle_main_window(app: &AppHandle) {
 
     let _ = window.hide();
     keep_main_window_floating(app);
-    position_main_window(app);
     let _ = window.show();
     let _ = window.set_focus();
   }
@@ -767,6 +767,7 @@ fn initialize_schema(conn: &Connection) -> rusqlite::Result<()> {
 }
 
 fn ensure_shortcuts_is_pinned_column(conn: &Connection) -> rusqlite::Result<()> {
+  // Backward compatibility for existing databases created before `is_pinned` was introduced.
   let mut statement = conn.prepare("PRAGMA table_info(shortcuts)")?;
   let columns = statement.query_map([], |row| row.get::<_, String>(1))?;
   let mut has_is_pinned = false;
@@ -795,6 +796,7 @@ fn load_toggle_shortcut(conn: &Connection) -> Result<String, Box<dyn Error>> {
       upsert_setting(conn, "toggle_shortcut", DEFAULT_TOGGLE_SHORTCUT)?;
       return Ok(DEFAULT_TOGGLE_SHORTCUT.to_owned());
     }
+    // Upgrade old default values to the current default shortcut.
     if trimmed == LEGACY_DEFAULT_TOGGLE_SHORTCUT {
       upsert_setting(conn, "toggle_shortcut", DEFAULT_TOGGLE_SHORTCUT)?;
       return Ok(DEFAULT_TOGGLE_SHORTCUT.to_owned());

@@ -3,7 +3,7 @@ type Modifier = (typeof MODIFIER_ORDER)[number]
 const FUNCTION_KEY_REGEX = /^F([1-9]|1[0-2])$/
 const FUNCTION_KEYS = Array.from({ length: 12 }, (_, index) => `F${index + 1}`)
 
-const DISPLAY_KEYS: readonly string[] = [
+const DISPLAY_KEYS = [
   'A',
   'B',
   'C',
@@ -72,8 +72,18 @@ export function splitCombo(combo: string): { modifiers: Modifier[]; key: string 
     .map((part) => part.trim())
     .filter(Boolean)
 
-  const modifiers = MODIFIER_ORDER.filter((modifier) => parts.includes(modifier))
-  const key = parts.find((part) => !MODIFIER_ORDER.includes(part as Modifier)) ?? ''
+  // Keep one occurrence for each modifier and leave the remaining token as primary key.
+  // This preserves combos such as `Shift+Shift` when reading existing values.
+  const remaining = [...parts]
+  const modifiers: Modifier[] = []
+  for (const modifier of MODIFIER_ORDER) {
+    const index = remaining.indexOf(modifier)
+    if (index !== -1) {
+      modifiers.push(modifier)
+      remaining.splice(index, 1)
+    }
+  }
+  const key = remaining[0] ?? ''
 
   return { modifiers, key }
 }
