@@ -7,6 +7,7 @@ import {
   selectablePrimaryKeys,
   splitCombo,
 } from '../utils/hotkey'
+import { t } from '../i18n'
 
 const props = defineProps<{
   modelValue: string
@@ -23,9 +24,9 @@ const isRecording = ref(false)
 
 const recordPlaceholder = computed(() => {
   if (isRecording.value) {
-    return '请按下组合键...'
+    return t('recordingPlaceholder')
   }
-  return '点击后按下快捷键，例如 Command+Shift+K'
+  return t('idlePlaceholder')
 })
 
 watch(
@@ -69,7 +70,7 @@ function clearValue() {
         :class="{ active: mode === 'record' }"
         @click="mode = 'record'"
       >
-        监听输入
+        {{ t('inputModeRecord') }}
       </button>
       <button
         type="button"
@@ -77,9 +78,9 @@ function clearValue() {
         :class="{ active: mode === 'select' }"
         @click="mode = 'select'"
       >
-        下拉选择
+        {{ t('inputModeSelect') }}
       </button>
-      <button type="button" class="ghost-btn danger" @click="clearValue">清空</button>
+      <button type="button" class="ghost-btn danger" @click="clearValue">{{ t('clear') }}</button>
     </div>
 
     <div v-if="mode === 'record'" class="record-panel">
@@ -103,7 +104,7 @@ function clearValue() {
       </div>
 
       <select v-model="selectedPrimaryKey" class="key-select">
-        <option value="">选择主键</option>
+        <option value="">{{ t('selectPrimaryKey') }}</option>
         <option v-for="key in selectablePrimaryKeys" :key="key" :value="key">
           {{ key }}
         </option>

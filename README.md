@@ -3,6 +3,7 @@
 一个基于 **Tauri 2 + Vue 3 + SQLite** 的桌面快捷键记忆工具，支持菜单栏常驻、全局唤起、快捷键录入与分类管理。
 
 ![alt text](VIEW.png)
+![alt text](VIEW2.png)
 
 ## 功能特性
 

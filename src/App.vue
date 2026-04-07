@@ -15,6 +15,7 @@ import {
   updateShortcut,
 } from './api'
 import ShortcutInput from './components/ShortcutInput.vue'
+import { locale, setLocale, t, type Locale } from './i18n'
 import type { AppItem, AppSettings, ShortcutItem } from './types'
 
 const apps = ref<AppItem[]>([])
@@ -56,6 +57,7 @@ const settingsForm = ref({
   toggleShortcut: '',
   windowPositionMode: 'top_center' as AppSettings['windowPositionMode'],
 })
+const settingsLanguage = ref<Locale>(locale.value)
 const savingSettings = ref(false)
 const showSettingsDialog = ref(false)
 
@@ -95,6 +97,13 @@ const filteredShortcuts = computed(() => {
   })
 })
 
+const appsCountLabel = computed(() => {
+  if (loadingApps.value) {
+    return t('loading')
+  }
+  return t('appsCount', { count: apps.value.length })
+})
+
 watch(selectedAppId, (appId) => {
   clearPendingAppDelete()
   clearPendingShortcutDelete()
@@ -123,6 +132,7 @@ async function loadSettings() {
 function openSettingsDialog() {
   settingsForm.value.toggleShortcut = appSettings.value.toggleShortcut
   settingsForm.value.windowPositionMode = appSettings.value.windowPositionMode
+  settingsLanguage.value = locale.value
   showSettingsDialog.value = true
 }
 
@@ -197,14 +207,14 @@ async function submitApp() {
         description: appForm.value.description || null,
       })
       targetId = updated.id
-      showNotice('应用已更新')
+      showNotice(t('appUpdated'))
     } else {
       const created = await createApp({
         name: appForm.value.name,
         description: appForm.value.description || null,
       })
       targetId = created.id
-      showNotice('应用已创建')
+      showNotice(t('appCreated'))
     }
     resetAppForm()
     await loadApps(targetId)
@@ -225,7 +235,7 @@ async function removeApp(app: AppItem) {
     }
     await loadApps()
     clearPendingAppDelete()
-    showNotice('应用已删除')
+    showNotice(t('appDeleted'))
   } catch (error) {
     showNotice(parseError(error))
   } finally {
@@ -276,7 +286,7 @@ function startEditShortcut(shortcut: ShortcutItem) {
 async function submitShortcut() {
   if (savingShortcut.value) return
   if (selectedAppId.value === null) {
-    showNotice('请先选择应用')
+    showNotice(t('selectAppRequired'))
     return
   }
 
@@ -288,7 +298,7 @@ async function submitShortcut() {
         combo: shortcutForm.value.combo,
         notes: shortcutForm.value.notes || null,
       })
-      showNotice('快捷键已更新')
+      showNotice(t('shortcutUpdated'))
     } else {
       await createShortcut({
         appId: selectedAppId.value,
@@ -296,7 +306,7 @@ async function submitShortcut() {
         combo: shortcutForm.value.combo,
         notes: shortcutForm.value.notes || null,
       })
-      showNotice('快捷键已创建')
+      showNotice(t('shortcutCreated'))
     }
 
     resetShortcutForm()
@@ -319,7 +329,7 @@ async function removeShortcut(shortcut: ShortcutItem) {
       await loadApps(selectedAppId.value)
     }
     clearPendingShortcutDelete()
-    showNotice('快捷键已删除')
+    showNotice(t('shortcutDeleted'))
   } catch (error) {
     showNotice(parseError(error))
   } finally {
@@ -384,12 +394,16 @@ async function submitSettings() {
     appSettings.value = latest
     settingsForm.value.toggleShortcut = latest.toggleShortcut
     settingsForm.value.windowPositionMode = latest.windowPositionMode
-    showNotice('窗口设置已更新')
+    if (settingsLanguage.value !== locale.value) {
+      setLocale(settingsLanguage.value)
+    }
+    showNotice(t('settingsUpdated'))
     showSettingsDialog.value = false
   } catch (error) {
     showNotice(parseError(error))
     settingsForm.value.toggleShortcut = appSettings.value.toggleShortcut
     settingsForm.value.windowPositionMode = appSettings.value.windowPositionMode
+    settingsLanguage.value = locale.value
   } finally {
     savingSettings.value = false
   }
@@ -400,7 +414,7 @@ function parseError(error: unknown) {
   if (error && typeof error === 'object' && 'toString' in error) {
     return String(error)
   }
-  return '发生未知错误'
+  return t('unknownError')
 }
 
 function showNotice(message: string) {
@@ -423,29 +437,31 @@ onUnmounted(() => {
     <header class="topbar">
       <div>
         <h1>Shortcut Key Map</h1>
-        <p>记录、编辑并快速回顾各软件快捷键，支持组合键监听和下拉录入。</p>
+        <p>{{ t('appSubtitle') }}</p>
       </div>
       <div class="topbar-actions">
         <div class="hint">
-          <span class="hint-label">全局切换快捷键</span>
+          <span class="hint-label">{{ t('globalToggleShortcut') }}</span>
           <span class="hint-value">{{ appSettings.toggleShortcut }}</span>
         </div>
-        <button type="button" class="ghost-btn topbar-btn" @click="openSettingsDialog">全局设置</button>
+        <button type="button" class="ghost-btn topbar-btn" @click="openSettingsDialog">
+          {{ t('globalSettings') }}
+        </button>
       </div>
     </header>
 
     <main class="layout">
       <section class="panel apps-panel">
         <div class="panel-header">
-          <h2>应用列表</h2>
-          <span>{{ loadingApps ? '加载中...' : `${apps.length} 个应用` }}</span>
+          <h2>{{ t('appsPanelTitle') }}</h2>
+          <span>{{ appsCountLabel }}</span>
         </div>
 
         <input
           v-model="appQuery"
           class="search-input"
           type="text"
-          placeholder="搜索应用名称或说明"
+          :placeholder="t('searchAppsPlaceholder')"
         />
 
         <ul v-if="filteredApps.length > 0" class="app-list">
@@ -457,10 +473,10 @@ onUnmounted(() => {
           >
             <div class="app-main">
               <div class="app-title">{{ app.name }}</div>
-              <div class="app-meta">{{ app.shortcutCount }} 个快捷键</div>
+              <div class="app-meta">{{ t('shortcutsCount', { count: app.shortcutCount }) }}</div>
             </div>
             <div class="row-actions">
-              <button type="button" class="ghost-btn" @click.stop="startEditApp(app)">编辑</button>
+              <button type="button" class="ghost-btn" @click.stop="startEditApp(app)">{{ t('edit') }}</button>
               <button
                 type="button"
                 class="ghost-btn danger"
@@ -470,35 +486,35 @@ onUnmounted(() => {
               >
                 {{
                   deletingAppId === app.id
-                    ? '删除中...'
+                    ? t('deleting')
                     : pendingDeleteAppId === app.id
-                      ? '确认删除'
-                      : '删除'
+                      ? t('confirmDelete')
+                      : t('delete')
                 }}
               </button>
             </div>
           </li>
         </ul>
         <div v-else class="empty">
-          {{ apps.length === 0 ? '还没有应用，先在下方创建一个。' : '没有匹配到应用。' }}
+          {{ apps.length === 0 ? t('noAppsYet') : t('noAppsMatched') }}
         </div>
 
         <form class="form" @submit.prevent="submitApp">
-          <h3>{{ editingAppId === null ? '新建应用' : '编辑应用' }}</h3>
+          <h3>{{ editingAppId === null ? t('newApp') : t('editApp') }}</h3>
           <label>
-            <span>应用名称</span>
-            <input v-model="appForm.name" type="text" placeholder="例如: VS Code" />
+            <span>{{ t('appName') }}</span>
+            <input v-model="appForm.name" type="text" :placeholder="t('appNamePlaceholder')" />
           </label>
           <label>
-            <span>说明</span>
-            <input v-model="appForm.description" type="text" placeholder="可选，例如: 日常开发工具" />
+            <span>{{ t('appDescription') }}</span>
+            <input v-model="appForm.description" type="text" :placeholder="t('appDescriptionPlaceholder')" />
           </label>
           <div class="form-actions">
             <button type="submit" :disabled="savingApp">
-              {{ savingApp ? '保存中...' : editingAppId === null ? '添加应用' : '保存应用' }}
+              {{ savingApp ? t('saving') : editingAppId === null ? t('addApp') : t('saveApp') }}
             </button>
             <button v-if="editingAppId !== null" type="button" class="ghost-btn" @click="resetAppForm">
-              取消编辑
+              {{ t('cancelEdit') }}
             </button>
           </div>
         </form>
@@ -506,7 +522,7 @@ onUnmounted(() => {
 
       <section class="panel shortcuts-panel">
         <div class="panel-header">
-          <h2>快捷键</h2>
+          <h2>{{ t('shortcutsPanelTitle') }}</h2>
           <span v-if="selectedApp">{{ selectedApp.name }}</span>
         </div>
 
@@ -515,7 +531,7 @@ onUnmounted(() => {
             v-model="shortcutQuery"
             class="search-input"
             type="text"
-            placeholder="搜索快捷键名称、组合或备注"
+            :placeholder="t('searchShortcutsPlaceholder')"
           />
 
           <ul v-if="filteredShortcuts.length > 0" class="shortcut-list">
@@ -535,13 +551,15 @@ onUnmounted(() => {
                 >
                   {{
                     pinningShortcutId === shortcut.id
-                      ? '处理中...'
+                      ? t('processing')
                       : shortcut.isPinned
-                        ? '取消置顶'
-                        : '置顶'
+                        ? t('unpin')
+                        : t('pin')
                   }}
                 </button>
-                <button type="button" class="ghost-btn" @click="startEditShortcut(shortcut)">编辑</button>
+                <button type="button" class="ghost-btn" @click="startEditShortcut(shortcut)">
+                  {{ t('edit') }}
+                </button>
                 <button
                   type="button"
                   class="ghost-btn danger"
@@ -551,10 +569,10 @@ onUnmounted(() => {
                 >
                   {{
                     deletingShortcutId === shortcut.id
-                      ? '删除中...'
+                      ? t('deleting')
                       : pendingDeleteShortcutId === shortcut.id
-                        ? '确认删除'
-                        : '删除'
+                        ? t('confirmDelete')
+                        : t('delete')
                   }}
                 </button>
               </div>
@@ -563,31 +581,31 @@ onUnmounted(() => {
           <div v-else class="empty">
             {{
               loadingShortcuts
-                ? '读取中...'
+                ? t('loading')
                 : shortcuts.length === 0
-                  ? '该应用还没有快捷键，先添加一条。'
-                  : '没有匹配到快捷键。'
+                  ? t('noShortcutsYet')
+                  : t('noShortcutsMatched')
             }}
           </div>
 
           <form class="form" @submit.prevent="submitShortcut">
-            <h3>{{ editingShortcutId === null ? '新建快捷键' : '编辑快捷键' }}</h3>
+            <h3>{{ editingShortcutId === null ? t('newShortcut') : t('editShortcut') }}</h3>
             <label>
-              <span>快捷键名称</span>
-              <input v-model="shortcutForm.title" type="text" placeholder="例如: 打开命令面板" />
+              <span>{{ t('shortcutName') }}</span>
+              <input v-model="shortcutForm.title" type="text" :placeholder="t('shortcutNamePlaceholder')" />
             </label>
 
             <label>
-              <span>组合键</span>
+              <span>{{ t('shortcutCombo') }}</span>
               <ShortcutInput v-model="shortcutForm.combo" />
             </label>
 
             <label>
-              <span>备注</span>
+              <span>{{ t('shortcutNotes') }}</span>
               <textarea
                 v-model="shortcutForm.notes"
                 rows="3"
-                placeholder="可选，例如: 在编辑器内调用命令面板"
+                :placeholder="t('shortcutNotesPlaceholder')"
               />
             </label>
 
@@ -595,10 +613,10 @@ onUnmounted(() => {
               <button type="submit" :disabled="savingShortcut">
                 {{
                   savingShortcut
-                    ? '保存中...'
+                    ? t('saving')
                     : editingShortcutId === null
-                      ? '添加快捷键'
-                      : '保存快捷键'
+                      ? t('addShortcut')
+                      : t('saveShortcut')
                 }}
               </button>
               <button
@@ -607,13 +625,13 @@ onUnmounted(() => {
                 class="ghost-btn"
                 @click="resetShortcutForm"
               >
-                取消编辑
+                {{ t('cancelEdit') }}
               </button>
             </div>
           </form>
         </template>
 
-        <div v-else class="empty">请先在左侧选择或创建一个应用。</div>
+        <div v-else class="empty">{{ t('selectAppFirst') }}</div>
       </section>
     </main>
 
@@ -632,33 +650,40 @@ onUnmounted(() => {
     >
       <section class="settings-dialog panel">
         <div class="panel-header">
-          <h2>全局设置</h2>
-          <span>菜单栏与唤起行为</span>
+          <h2>{{ t('settingsTitle') }}</h2>
+          <span>{{ t('settingsSubtitle') }}</span>
         </div>
         <form class="form" @submit.prevent="submitSettings">
           <label>
-            <span>唤起/收起窗口快捷键</span>
+            <span>{{ t('toggleShortcutField') }}</span>
             <ShortcutInput v-model="settingsForm.toggleShortcut" />
           </label>
           <label>
-            <span>窗口展示位置</span>
+            <span>{{ t('windowPositionField') }}</span>
             <select v-model="settingsForm.windowPositionMode" class="position-select">
-              <option value="left_top">左上</option>
-              <option value="top_center">中上</option>
-              <option value="right_top">右上</option>
-              <option value="left_center">左中</option>
-              <option value="center">中间</option>
-              <option value="right_center">右中</option>
-              <option value="left_bottom">左下</option>
-              <option value="bottom_center">中下</option>
-              <option value="right_bottom">右下</option>
+              <option value="left_top">{{ t('positionLeftTop') }}</option>
+              <option value="top_center">{{ t('positionTopCenter') }}</option>
+              <option value="right_top">{{ t('positionRightTop') }}</option>
+              <option value="left_center">{{ t('positionLeftCenter') }}</option>
+              <option value="center">{{ t('positionCenter') }}</option>
+              <option value="right_center">{{ t('positionRightCenter') }}</option>
+              <option value="left_bottom">{{ t('positionLeftBottom') }}</option>
+              <option value="bottom_center">{{ t('positionBottomCenter') }}</option>
+              <option value="right_bottom">{{ t('positionRightBottom') }}</option>
+            </select>
+          </label>
+          <label>
+            <span>{{ t('languageField') }}</span>
+            <select v-model="settingsLanguage" class="position-select">
+              <option value="zh">{{ t('langZh') }}</option>
+              <option value="en">{{ t('langEn') }}</option>
             </select>
           </label>
           <div class="form-actions">
             <button type="submit" :disabled="savingSettings">
-              {{ savingSettings ? '保存中...' : '保存设置' }}
+              {{ savingSettings ? t('saving') : t('saveSettings') }}
             </button>
-            <button type="button" class="ghost-btn" @click="closeSettingsDialog">取消</button>
+            <button type="button" class="ghost-btn" @click="closeSettingsDialog">{{ t('cancel') }}</button>
           </div>
         </form>
       </section>
