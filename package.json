@@ -1,0 +1,27 @@
+{
+  "name": "shortcut-key-map",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "check:frontend": "npm run build",
+    "check:backend": "cargo check --manifest-path src-tauri/Cargo.toml",
+    "test:backend": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "verify": "npm run check:frontend && npm run check:backend && npm run test:backend && npm run tauri build -- --debug",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.10.1",
+    "vue": "^3.4.37"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.1",
+    "@vitejs/plugin-vue": "^5.1.2",
+    "typescript": "^5.5.3",
+    "vite": "^5.4.1",
+    "vue-tsc": "^2.0.29"
+  }
+}
